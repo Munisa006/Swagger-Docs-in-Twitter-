@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import List
 
 from app.dependencies import get_db, get_current_user
 from app.models import Follow, User
-from app.schemas import FollowResponse, UserProfileResponse
+from app.schemas import FollowResponse, UserProfileResponse, FollowedUserOut
 
 router = APIRouter(
     prefix="/follows",
@@ -46,6 +47,7 @@ def follow_user(
         follower_id=current_user.id,
         following_id=target_user_id
     )
+
     db.add(follow)
     db.commit()
 
@@ -113,3 +115,33 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
         "following_count": following_count,
         "posts_count": posts_count
     }
+
+
+@router.get(
+    "/me",
+    response_model=List[FollowedUserOut],
+    summary="Get users I follow",
+    description="Return a list of users followed by the currently authenticated user."
+)
+def get_users_i_follow(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    follows = (
+        db.query(Follow)
+        .filter(Follow.follower_id == current_user.id)
+        .all()
+    )
+
+    followed_user_ids = [follow.following_id for follow in follows]
+
+    if not followed_user_ids:
+        return []
+
+    users = (
+        db.query(User)
+        .filter(User.id.in_(followed_user_ids))
+        .all()
+    )
+
+    return users

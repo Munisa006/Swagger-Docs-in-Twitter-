@@ -62,6 +62,17 @@ class FollowResponse(BaseModel):
     target_user_id: int
 
 
+class FollowedUserOut(BaseModel):
+    id: int
+    full_name: str
+    username: str
+    email: EmailStr
+    bio: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
 class UserProfileResponse(BaseModel):
     id: int
     full_name: str
@@ -71,6 +82,8 @@ class UserProfileResponse(BaseModel):
     followers_count: int
     following_count: int
     posts_count: int
+
+
 
     class Config:
         from_attributes = True

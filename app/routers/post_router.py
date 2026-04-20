@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_db, get_current_user
@@ -44,7 +44,11 @@ def create_post(
     description="Return a list of all posts ordered from newest to oldest."
 )
 def get_posts(db: Session = Depends(get_db)):
-    return db.query(Post).order_by(Post.created_at.desc()).all()
+    return (
+        db.query(Post)
+        .order_by(Post.created_at.desc())
+        .all()
+    )
 
 
 @router.get(
@@ -63,3 +67,37 @@ def get_my_posts(
         .order_by(Post.created_at.desc())
         .all()
     )
+
+
+@router.delete(
+    "/{post_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Delete a post",
+    description="Delete a post created by the authenticated user."
+)
+def delete_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    post = db.query(Post).filter(Post.id == post_id).first()
+
+    if not post:
+        raise HTTPException(
+            status_code=404,
+            detail="Post not found"
+        )
+
+    if post.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You are not allowed to delete this post"
+        )
+
+    db.delete(post)
+    db.commit()
+
+    return {
+        "message": "Post deleted successfully",
+        "post_id": post_id
+    }
